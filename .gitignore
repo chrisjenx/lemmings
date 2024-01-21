@@ -1,0 +1,14 @@
+# Ignore Gradle project-specific cache directory
+.gradle
+
+# Ignore Gradle build output directory
+build
+tmp/
+
+# Ignore IDEA
+.idea
+
+*.iml
+
+# Sets Android SDK
+local.properties

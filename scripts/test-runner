@@ -1,0 +1,54 @@
+#!/bin/bash
+set -euo pipefail
+
+echo "~~~ Setup env vars"
+export ANDROID_HOME=$HOME/Android/Sdk
+export CMDLINE_TOOLS_ROOT=$ANDROID_HOME/cmdline-tools/latest/bin
+export PATH=$ANDROID_HOME/emulator:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/tools:$ANDROID_HOME/tools/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/platform-tools/bin:$PATH
+export SDK_TOOLS_URL="https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip"
+
+echo "~~~ Setup cmdline folders"
+if ! command -v sdkmanager &>/dev/null; then
+  echo "sdkmanager not installed, installing"
+  mkdir -p "$ANDROID_HOME"/cmdline-tools
+  mkdir -p "$ANDROID_HOME"/platforms
+  echo "Fetch SDK Tools"
+  curl "$SDK_TOOLS_URL" --output /tmp/cmdline-tools.zip
+  echo "Unzip to $ANDROID_HOME/cmdline-tools"
+  unzip -o -q /tmp/cmdline-tools.zip -d "$ANDROID_HOME"/cmdline-tools
+  rm /tmp/cmdline-tools.zip
+  echo "Move into cmdline-tools/latest"
+  rm -rf "$ANDROID_HOME"/cmdline-tools/latest
+  mv "$ANDROID_HOME"/cmdline-tools/cmdline-tools "$ANDROID_HOME"/cmdline-tools/latest
+fi
+
+echo "~~~ Check/Install Cmdline tools"
+# Check if adb command exists and install if not
+if ! command -v adb >/dev/null 2>&1; then
+    echo "ADB not found install sdk tooks"
+    echo y | "${CMDLINE_TOOLS_ROOT}"/sdkmanager "tools"
+    echo y | "${CMDLINE_TOOLS_ROOT}"/sdkmanager "platform-tools"
+fi
+# Check if emulator command exists and install if not
+if ! command -v emulator >/dev/null 2>&1; then
+    echo "Emulator not found install emulator sdk"
+    echo y | "${CMDLINE_TOOLS_ROOT}"/sdkmanager "emulator"
+fi
+
+CLEAN_DEVICE='false'
+
+if [[ $BUILDKITE_RETRY_COUNT -gt 0 ]]; then
+  CLEAN_DEVICE='true'
+fi
+
+java -jar tmp/testrunner.jar \
+  --apk "$RUNNER_APK" \
+  --output "$RUNNER_OUTPUT_DIR" \
+  --project "$RUNNER_PROJECT" \
+  --flavor "$RUNNER_FLAVOR" \
+  --systemImg "$RUNNER_SYSTEM_IMAGE" \
+  --device "$RUNNER_DEVICE" \
+  --clean "$CLEAN_DEVICE"
+
+# We use pipeline to upload to make sure it catches failures too
+# buildkite-agent artifact upload "$RUNNER_OUTPUT_DIR/**/*"

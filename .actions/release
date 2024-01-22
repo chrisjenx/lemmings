@@ -1,0 +1,18 @@
+#!/bin/bash
+
+set -euo pipefail
+
+echo "--- Uploading test runner release"
+
+# get git short sha
+SHORT_SHA=$(git rev-parse --short HEAD)
+
+# create jar
+./gradlew jar
+
+gh config set prompt disabled
+gh release create testrunner-"$SHORT_SHA" \
+  --title "$SHORT_SHA" \
+  --generate-notes \
+  --prerelease 'build/libs/testrunner.jar'
+
